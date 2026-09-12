@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ED Studio · Tablero de Edición</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#1d212b;--line:#262b36;--line2:#323846;
+  --txt:#e8eaf0;--muted:#8b93a7;--muted2:#6b7387;
+  --acc:#6c8cff;--grad:linear-gradient(135deg,#6c8cff,#9b6cff);
+  --green:#37d399;--green-bg:#123027;--amber:#ffb547;--amber-bg:#33260f;
+  --red:#ff6b6b;--red-bg:#331717;--blue:#6c8cff;--blue-bg:#182036;
+  --purple:#9b6cff;--purple-bg:#1f1836;
+  --radius:14px;--radius-sm:9px;--shadow:0 8px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;-webkit-font-smoothing:antialiased;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2a303c;border-radius:8px;border:2px solid var(--bg)}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:13px}
+a{color:var(--acc);text-decoration:none}
+
+/* Topbar */
+.top{flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;box-shadow:0 4px 14px rgba(108,140,255,.4)}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.brand .sub{font-size:11.5px;color:var(--muted2);font-weight:500}
+.top .spacer{flex:1}
+.summary{display:flex;gap:10px;flex-wrap:wrap}
+.sum-chip{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600}
+.sum-chip .dot{width:8px;height:8px;border-radius:50%}
+.sum-chip.red .dot{background:var(--red)} .sum-chip.red{color:var(--red)}
+.sum-chip.amber .dot{background:var(--amber)} .sum-chip.amber{color:var(--amber)}
+.sum-chip.blue .dot{background:var(--blue)}
+.search{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;color:var(--txt);width:200px;transition:.15s}
+.search:focus{outline:none;border-color:var(--acc);width:240px}
+.btn{background:var(--grad);color:#fff;border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:.15s;box-shadow:0 4px 14px rgba(108,140,255,.3)}
+.btn:hover{transform:translateY(-1px)}
+.btn.ghost{background:var(--panel2);border:1px solid var(--line);box-shadow:none;color:var(--muted)}
+.btn.ghost:hover{color:var(--txt);border-color:var(--line2);transform:none}
+.mini-btn{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 11px;font-size:12px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
+.mini-btn:hover{background:#232833;color:var(--txt)}
+.con-btn.con{background:var(--green-bg);color:var(--green);border-color:transparent}
+.nube-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-left:3px;animation:pulse 1.6s infinite}
+#mesSel{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;color:var(--txt);font-weight:600}
+#mesSel:focus{outline:none;border-color:var(--acc)}
+
+/* Filters row */
+.filters{flex-shrink:0;padding:11px 24px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:rgba(23,26,33,.5)}
+.filters select{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 11px;color:var(--txt)}
+.filters select:focus{outline:none;border-color:var(--acc)}
+.prio-filter{display:flex;gap:6px}
+.prio-btn{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px}
+.prio-btn .dot{width:8px;height:8px;border-radius:50%}
+.prio-btn.active{border-color:transparent}
+.prio-btn.active[data-p="hoy"]{background:var(--red-bg);color:var(--red)}
+.prio-btn.active[data-p="semana"]{background:var(--amber-bg);color:var(--amber)}
+.prio-btn.active[data-p="despues"]{background:var(--blue-bg);color:#9db0ff}
+.prio-btn.active[data-p=""]{background:var(--panel2);color:var(--txt)}
+.chip{display:inline-block;background:var(--panel2);border:1px solid var(--line2);font-size:11.5px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:20px}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:3px}
+.seg-b{padding:7px 13px;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg-b.active{background:var(--blue-bg);color:#cdd7ff}
+.recursos-view{flex:1;overflow-y:auto;padding:22px 24px}
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.rec-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+.rec-card h4{font-size:15px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rec-card h4 .add{background:var(--panel2);border:1px solid var(--line2);border-radius:20px;padding:3px 11px;font-size:11px;font-weight:700;color:var(--acc)}
+.rec-card h4 .add:hover{background:var(--blue-bg)}
+.rec-link{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:7px}
+.rec-link .ri{font-size:15px}
+.rec-link .rinf{flex:1;overflow:hidden}
+.rec-link .rn{font-weight:700;font-size:12.5px}
+.rec-link .ru{font-size:11px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec-link .ru a{color:var(--acc)}
+
+/* Board */
+.board{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;gap:16px;padding:20px 24px}
+.col{flex:0 0 300px;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);max-height:100%}
+.col-head{padding:14px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--line);position:sticky;top:0}
+.col-head .ic{font-size:16px}
+.col-head .nm{font-weight:700;font-size:13.5px;flex:1}
+.col-head .cnt{background:var(--panel2);color:var(--muted);font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px}
+.col{flex:0 0 300px;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);max-height:100%;overflow:hidden}
+.col-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;display:flex;flex-direction:column;gap:11px}
+.col-body::-webkit-scrollbar{width:9px}
+.col-body::-webkit-scrollbar-thumb{background:#333a48;border-radius:8px;border:2px solid var(--panel)}
+.col-body::-webkit-scrollbar-thumb:hover{background:#3f4759}
+.col-empty{flex-shrink:0}
+.col.drop-target{outline:2px dashed var(--acc);outline-offset:-4px}
+.col-add{padding:10px 12px;border-top:1px solid var(--line)}
+.col-add button{width:100%;background:transparent;border:1px dashed var(--line2);border-radius:var(--radius-sm);padding:9px;font-size:12.5px;font-weight:600;color:var(--muted2);transition:.14s}
+.col-add button:hover{background:var(--panel2);color:var(--txt);border-color:var(--acc)}
+
+/* estados color accents on column headers */
+.col[data-estado="pendiente"] .col-head{border-bottom-color:#3a3550}
+.col[data-estado="proceso"] .col-head .ic{filter:none}
+.col[data-estado="editado"] .col-head .cnt{background:var(--green-bg);color:var(--green)}
+
+/* Card */
+.card{background:var(--panel2);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:0;overflow:hidden;cursor:grab;transition:.14s;position:relative;flex-shrink:0}
+.card:hover{border-color:var(--line2);box-shadow:var(--shadow);transform:translateY(-1px)}
+.card.dragging{opacity:.4}
+.card.card-over{border-top:3px solid var(--acc)}
+.card .prio-stripe{height:4px;width:100%}
+.prio-hoy{background:var(--red)} .prio-semana{background:var(--amber)} .prio-despues{background:var(--blue)} .prio-sin{background:#3a4152}
+.card-in{padding:12px 13px;display:flex;flex-direction:column;gap:9px}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.card .cli{font-weight:800;font-size:15px;letter-spacing:-.2px}
+.card .prio-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;cursor:pointer;user-select:none;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.prio-tag.hoy{background:var(--red-bg);color:var(--red)} .prio-tag.semana{background:var(--amber-bg);color:var(--amber)}
+.prio-tag.despues{background:var(--blue-bg);color:#9db0ff} .prio-tag.sin{background:#232833;color:var(--muted2)}
+.card .meta{display:flex;gap:7px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--muted)}
+.card .qty{background:#232a3a;color:#aeb9d6;font-weight:700;padding:2px 9px;border-radius:6px;font-size:11.5px}
+.card .tipo-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+.tipo-Reel{background:var(--blue-bg);color:#9db0ff} .tipo-Horizontal{background:var(--green-bg);color:var(--green)} .tipo-Mixto{background:var(--purple-bg);color:#c3a6ff} .tipo-VSL{background:var(--green-bg);color:var(--green)}
+.card .editor-tag{background:#2a2036;color:#c9b3e6;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+.estilo-tag{background:var(--panel);border:1px solid var(--line2);color:#c3a6ff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+.dl-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.dl-badge.ok{background:var(--panel);color:var(--muted)}
+.dl-badge.pronto{background:var(--amber-bg);color:var(--amber)}
+.dl-badge.hoy{background:var(--red-bg);color:var(--red)}
+.dl-badge.vencido{background:var(--red-bg);color:var(--red);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.prog{display:flex;align-items:center;gap:8px}
+.prog-track{flex:1;height:7px;background:var(--panel);border-radius:20px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--green),#5fe0b0);border-radius:20px;transition:width .3s}
+.prog-txt{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.card-res{display:flex;flex-wrap:wrap;gap:5px}
+.res-chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line2);border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;color:var(--txt);max-width:100%}
+.res-chip:hover{border-color:var(--acc);background:var(--blue-bg)}
+.res-chip .rl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.card-notas{font-size:11.5px;color:var(--muted2);font-style:italic}
+.card-acts{display:flex;gap:5px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:9px;margin-top:1px}
+.fb-row{display:flex;gap:5px}
+.fb-btn{flex:1;background:var(--panel);border:1px solid var(--line2);border-radius:7px;padding:5px 4px;font-size:10.5px;font-weight:700;color:var(--muted2);transition:.13s;white-space:nowrap}
+.fb-btn:hover{color:var(--txt)}
+.fb-btn.on.cor{background:var(--red-bg);color:var(--red);border-color:transparent}
+.fb-btn.on.cdo{background:var(--amber-bg);color:var(--amber);border-color:transparent}
+.fb-btn.on.apr{background:var(--green-bg);color:var(--green);border-color:transparent}
+.fb-nota{font-size:11px;color:#ff9d9d;background:var(--red-bg);border-radius:6px;padding:6px 9px;font-weight:500}
+.fb-badge{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:20px;vertical-align:middle;margin-left:4px}
+.fb-badge.corregir{background:var(--red-bg);color:var(--red)}
+.fb-badge.corregido{background:var(--amber-bg);color:var(--amber)}
+.fb-badge.aprobado{background:var(--green-bg);color:var(--green)}
+.fb-notas-btn{background:var(--panel);border:1px dashed var(--line2);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:600;color:var(--muted2);text-align:left;transition:.13s;width:100%}
+.fb-notas-btn:hover{color:var(--txt);border-color:var(--acc)}
+.fb-notas-btn.has{border-style:solid;background:var(--red-bg);color:#ffb0b0;border-color:transparent}
+.corr-row{display:flex;align-items:flex-start;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px}
+.corr-row.done{opacity:.6}
+.corr-row.done .corr-tx{text-decoration:line-through}
+.corr-chk{background:transparent;border:none;font-size:17px;flex-shrink:0;line-height:1}
+.corr-info{flex:1;overflow:hidden}
+.corr-tx{font-size:13px;font-weight:500;white-space:pre-wrap;word-break:break-word}
+.corr-link{font-size:12px;font-weight:700;color:#c3a6ff;display:inline-block;margin-top:4px}
+.card.fb-corregir{border-color:#5a2a2a;box-shadow:0 0 0 1px rgba(255,107,107,.25)}
+.card.fb-corregido{border-color:#4a3a1a}
+.card.fb-aprobado{border-color:#1f5741}
+.ca-btn{flex:0 0 auto;width:30px;height:30px;border-radius:7px;background:var(--panel);border:1px solid var(--line2);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);transition:.13s}
+.ca-btn:hover{background:#232833;color:var(--txt);border-color:var(--line2)}
+.ca-btn.danger:hover{background:var(--red-bg);color:var(--red);border-color:#5a2a2a}
+.ca-btn.grow{flex:1;width:auto;font-size:12px;font-weight:700;gap:5px}
+.ca-btn.next{background:var(--blue-bg);color:#cdd7ff;border-color:transparent}
+.ca-btn.done{background:var(--green-bg);color:var(--green);border-color:transparent}
+.col-empty{text-align:center;color:var(--muted2);font-size:12px;padding:24px 8px;border:1px dashed var(--line);border-radius:var(--radius-sm)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(6,8,12,.72);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;padding:24px}
+.overlay.show{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:18px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.modal-head h3{font-size:16px;font-weight:700;flex:1}
+.icon-btn{width:32px;height:32px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.icon-btn:hover{color:var(--txt)}
+.modal-body{padding:20px 22px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 15px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld.full{grid-column:1/-1}
+.fld label{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.fld input,.fld select,.fld textarea{background:var(--bg);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:10px 12px;color:var(--txt);width:100%}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--acc)}
+.prio-pick{display:flex;gap:8px}
+.prio-pick button{flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:9px;font-size:12px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+.prio-pick button .dot{width:9px;height:9px;border-radius:50%}
+.prio-pick button.on[data-p="hoy"]{background:var(--red-bg);color:var(--red);border-color:transparent}
+.prio-pick button.on[data-p="semana"]{background:var(--amber-bg);color:var(--amber);border-color:transparent}
+.prio-pick button.on[data-p="despues"]{background:var(--blue-bg);color:#9db0ff;border-color:transparent}
+.modal-foot{padding:15px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+.res-row{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px}
+.res-row .rinfo{flex:1;overflow:hidden}
+.res-row .rname{font-weight:700;font-size:13px}
+.res-row .rurl{font-size:11px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res-row .rurl a{color:var(--acc)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:12px 20px;font-weight:600;box-shadow:var(--shadow);z-index:200;transition:.3s;opacity:0}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.hint{font-size:11px;color:var(--muted2)}
+.paste-fab{margin-left:6px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><div class="logo">ED</div><div><h1>Tablero de Edición</h1><div class="sub" id="hoyFecha"></div></div></div>
+  <div class="summary" id="summary"></div>
+  <div class="spacer"></div>
+  <input class="search" id="search" placeholder="🔍 Buscar cliente o editor...">
+  <select id="mesSel" title="Mes"></select>
+  <button class="mini-btn con-btn" id="btnNube" onclick="abrirNube()">☁️ Nube</button>
+  <button class="btn" id="btnNew">＋ Nueva tarjeta</button>
+</div>
+<div class="filters">
+  <div class="prio-filter" id="prioFilter">
+    <button class="prio-btn active" data-p="">Todas</button>
+    <button class="prio-btn" data-p="hoy"><span class="dot" style="background:var(--red)"></span>Para hoy</button>
+    <button class="prio-btn" data-p="semana"><span class="dot" style="background:var(--amber)"></span>Esta semana</button>
+    <button class="prio-btn" data-p="despues"><span class="dot" style="background:var(--blue)"></span>Después</button>
+  </div>
+  <div class="seg" id="vistaSeg">
+    <button class="seg-b active" data-v="tablero">🗂️ Tablero</button>
+    <button class="seg-b" data-v="recursos">📁 Recursos</button>
+  </div>
+  <select id="fEditor"><option value="">Editor: todos</option></select>
+  <select id="fFeedback">
+    <option value="">Estado: todos</option>
+    <option value="corregir">✏️ Por corregir</option>
+    <option value="corregido">🔧 Corregidos</option>
+    <option value="aprobado">✅ Aprobados</option>
+  </select>
+  <span class="chip" id="filterCount"></span>
+  <div class="spacer" style="flex:1"></div>
+  <button class="mini-btn" id="btnOrdenar">⚡ Ordenar por prioridad/fecha</button>
+  <button class="mini-btn" id="btnImportPagos" style="color:#9db0ff">🔗 Importar de Pagos</button>
+  <button class="mini-btn" id="btnExport">⬇ Exportar</button>
+  <button class="mini-btn" id="btnImport">⬆ Importar</button>
+  <span class="paste-fab" id="pasteWrap"></span>
+</div>
+<div class="board" id="board"></div>
+<div class="recursos-view" id="recursosView" style="display:none"></div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<input type="file" id="fileInput" accept="application/json" style="display:none">
+<input type="file" id="pagosInput" accept="application/json" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ ESTADO ============ */
+const LS="edStudioTablero_v1";
+const uid=p=>(p||'t')+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const ESTADOS=[
+  {k:'pendiente',ic:'📥',nm:'Por hacer'},
+  {k:'proceso',ic:'⚙️',nm:'En proceso'},
+  {k:'editado',ic:'✅',nm:'Editado'},
+  {k:'entregado',ic:'📤',nm:'Entregado'},
+];
+const PRIOS={hoy:{nm:'Para hoy',cls:'hoy'},semana:{nm:'Esta semana',cls:'semana'},despues:{nm:'Después',cls:'despues'},sin:{nm:'Sin prioridad',cls:'sin'}};
+const PRIO_ORDEN={hoy:0,semana:1,despues:2,sin:3};
+const TIPOS=['Reel','Horizontal','VSL','Mixto'];
+
+function seed(){
+  const cli=['JULIETA','GERALDINE','MAUREN','LUKA','PÍA','FINANZAS ÉLITE','CHATLEVEL','FLIPLATINO','JUAN CARLOS','ANDRES ORELLANA','VERONIKA ALVARADO','GERALD CONFIENZA','JAIME DENTISTA'];
+  const editores=['JOSUE','ANIBAL','DUVAN','NICKO','AGENCIA (YO)'];
+  return {clientes:cli,editores,tarjetas:[],recursos:{}};
+}
+function load(){try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);if(d&&d.tarjetas)return d;}}catch(e){}return seed();}
+function save(){try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}if(fb&&!aplicandoRemoto)pushNubeDebounced();}
+
+/* ============ NUBE (Firebase, tiempo real) ============ */
+let fb=false, fbDb=null, sala=null, unsub=null, aplicandoRemoto=false, pushTimer=null;
+function cargarSDK(cb){
+  if(window.firebase&&window.firebase.firestore){cb();return;}
+  const add=(src,next)=>{const s=document.createElement('script');s.src=src;s.onload=next;s.onerror=()=>{toast('No se pudo cargar Firebase (¿sin internet?)');};document.head.appendChild(s);};
+  add('https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js',()=>add('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js',cb));
+}
+function conectarNube(config,salaId){
+  cargarSDK(()=>{try{
+    if(!firebase.apps.length)firebase.initializeApp(config);
+    fbDb=firebase.firestore(); sala=salaId; fb=true;
+    try{localStorage.setItem(LS+'_nube',JSON.stringify({config,sala:salaId}));}catch(e){}
+    suscribir(); estadoNubeUI(); toast('Conectado a la nube ☁️');
+  }catch(e){alert('Error al conectar: '+e.message);fb=false;estadoNubeUI();}});
+}
+function desconectarNube(){if(unsub){unsub();unsub=null;}fb=false;try{localStorage.removeItem(LS+'_nube');}catch(e){}estadoNubeUI();toast('Desconectado — modo local');}
+function suscribir(){
+  if(unsub)unsub();
+  unsub=fbDb.collection('tableros').doc(sala).onSnapshot(doc=>{
+    if(!doc.exists){pushNube();return;} // primera vez: sube lo local
+    const d=doc.data()||{};
+    aplicandoRemoto=true;
+    if(Array.isArray(d.tarjetas))state.tarjetas=d.tarjetas;
+    if(d.recursos)state.recursos=d.recursos;
+    if(Array.isArray(d.clientes))state.clientes=d.clientes;
+    if(Array.isArray(d.editores))state.editores=d.editores;
+    if(d.mesActivo){ const cambio=state.mesActivo!==d.mesActivo; state.mesActivo=d.mesActivo; if(cambio&&!mesUsuario)mesSel=d.mesActivo; } // sigue el mes activo del Studio
+    try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
+    render();
+    aplicandoRemoto=false;
+  },err=>{toast('Nube: '+err.message);});
+}
+function pushNubeDebounced(){clearTimeout(pushTimer);pushTimer=setTimeout(pushNube,400);}
+function pushNube(){if(!fb||!fbDb||!sala)return;try{
+  fbDb.collection('tableros').doc(sala).set({tarjetas:state.tarjetas||[],recursos:state.recursos||{},clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()});
+}catch(e){}}
+function estadoNubeUI(){
+  const b=document.getElementById('btnNube'); if(!b)return;
+  b.innerHTML=fb?'☁️ En la nube <span class="nube-dot on"></span>':'☁️ Nube';
+  b.classList.toggle('con',fb);
+}
+window.abrirNube=()=>{
+  let saved={};try{saved=JSON.parse(localStorage.getItem(LS+'_nube')||'{}');}catch(e){}
+  const cfg=saved.config?JSON.stringify(saved.config,null,2):'';
+  modal.innerHTML=`
+    <div class="modal-head"><h3>☁️ Sincronizar en la nube (tiempo real)</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:12px">${fb?'✅ <b style="color:var(--green)">Conectado.</b> Todos los que usen la misma “Sala” y config ven el tablero en vivo.':'Pega la configuración de tu proyecto Firebase y elige una “Sala” (un nombre para tu tablero). Todos tus editores usan la misma para verlo en tiempo real.'}</p>
+      <div class="fld" style="margin-bottom:11px"><label>Sala (código del tablero)</label><input id="nb_sala" value="${esc(saved.sala||'edstudio')}" placeholder="edstudio"></div>
+      <div class="fld"><label>Config de Firebase (pega el objeto firebaseConfig)</label><textarea id="nb_cfg" rows="9" placeholder='{\n  "apiKey": "...",\n  "authDomain": "...",\n  "projectId": "...",\n  "appId": "..."\n}'>${esc(cfg)}</textarea></div>
+      <p class="hint" style="margin-top:10px">¿No lo tienes? Abre la guía: en Firebase Console → crea proyecto → Firestore Database → Configuración del proyecto → “Tus apps” (Web) → copia firebaseConfig.</p>
+    </div>
+    <div class="modal-foot">
+      ${fb?'<button class="btn ghost" style="background:var(--red-bg);color:var(--red)" onclick="desconectarNube();closeModal()">Desconectar</button>':''}
+      <div style="flex:1"></div>
+      <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+      <button class="btn" onclick="guardarNube()">${fb?'Reconectar':'Conectar'}</button>
+    </div>`;
+  overlay.classList.add('show');
+};
+function parseCfg(txt){
+  txt=(txt||'').trim();
+  const a=txt.indexOf('{'), b=txt.lastIndexOf('}');
+  if(a>=0&&b>=0)txt=txt.slice(a,b+1);
+  try{return JSON.parse(txt);}catch(e){}
+  let t=txt.replace(/\/\/.*$/gm,'').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":').replace(/'/g,'"').replace(/,(\s*[}\]])/g,'$1');
+  return JSON.parse(t);
+}
+window.guardarNube=()=>{
+  const salaId=(document.getElementById('nb_sala').value||'').trim();
+  let cfg;try{cfg=parseCfg(document.getElementById('nb_cfg').value);}catch(e){alert('No pude leer la config de Firebase. Pega el bloque completo (con las llaves { }). Detalle: '+e.message);return;}
+  if(!salaId){alert('Ponle un nombre a la Sala.');return;}
+  if(!cfg.projectId){alert('Falta projectId en la config. Copia el firebaseConfig completo.');return;}
+  closeModal();conectarNube(cfg,salaId);
+};
+let state=load();
+state.tarjetas.forEach(t=>{if(t.editados===undefined)t.editados=0;
+  if(!t.correcciones)t.correcciones=[];
+  if(t.feedbackNota){t.correcciones.push({id:uid('c'),texto:t.feedbackNota,url:'',hecho:false,fecha:''});delete t.feedbackNota;}
+});
+if(!state.recursos)state.recursos={};
+// migrar recursos de tarjetas viejas a nivel de cliente
+state.tarjetas.forEach(t=>{
+  if(t.recursos&&t.recursos.length){
+    if(!state.recursos[t.cliente])state.recursos[t.cliente]=[];
+    t.recursos.forEach(r=>{if(!state.recursos[t.cliente].some(x=>x.url===r.url))state.recursos[t.cliente].push({id:r.id||uid('r'),label:r.label,url:r.url});});
+    delete t.recursos;
+  }
+});
+function recursosDe(cli){return (state.recursos&&state.recursos[cli])||[];}
+let clipCard=null;
+try{const c=localStorage.getItem(LS+'_clip');if(c)clipCard=JSON.parse(c);}catch(e){}
+let fPrio="", fEditor="", fFeedback="", busca="", selId=null, vista="tablero", mesSel="", mesUsuario=false;
+
+/* ============ HELPERS ============ */
+const esc=s=>(s===null||s===undefined)?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+function toast(m){const t=document.getElementById('toast');t.textContent="✓ "+m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2100);}
+function platform(u){if(!u)return'Link';u=u.toLowerCase();if(u.includes('loom.com'))return'Loom';if(u.includes('drive.google'))return'Drive';if(u.includes('youtu'))return'YouTube';if(u.includes('frame.io'))return'Frame';if(u.includes('dropbox'))return'Dropbox';if(u.includes('wetransfer'))return'WeTransfer';return'Link';}
+function dlInfo(iso){
+  if(!iso)return null;
+  const d=new Date(iso+'T00:00:00');if(isNaN(d))return null;
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const dias=Math.round((d-hoy)/86400000);
+  const txt=d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'});
+  if(dias<0)return{txt:'Vencido '+txt,cls:'vencido'};
+  if(dias===0)return{txt:'Hoy',cls:'hoy'};
+  if(dias===1)return{txt:'Mañana',cls:'pronto'};
+  if(dias<=6)return{txt:txt+' ('+dias+'d)',cls:'pronto'};
+  return{txt:txt,cls:'ok'};
+}
+function fechaHoy(){const h=new Date();document.getElementById('hoyFecha').textContent=h.toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'});}
+
+/* ============ RENDER ============ */
+const board=document.getElementById('board');
+function tarjetasVisibles(){
+  return state.tarjetas.filter(t=>{
+    if(mesSel && (t.mes||'')!==mesSel) return false;
+    if(fPrio && t.prioridad!==fPrio) return false;
+    if(fEditor && t.editor!==fEditor) return false;
+    if(fFeedback && (t.feedback||'')!==fFeedback) return false;
+    if(busca){const s=(t.cliente+' '+(t.editor||'')+' '+(t.notas||'')).toLowerCase();if(!s.includes(busca.toLowerCase()))return false;}
+    return true;
+  });
+}
+function mesesDisponibles(){
+  const set=new Set(); state.tarjetas.forEach(t=>{if(t.mes)set.add(t.mes);});
+  if(state.mesActivo)set.add(state.mesActivo);
+  return [...set];
+}
+function renderMesSelector(){
+  const sel=document.getElementById('mesSel'); if(!sel)return;
+  const meses=mesesDisponibles();
+  if(!meses.length){sel.style.display='none';return;}
+  sel.style.display='';
+  if(!mesSel || !meses.includes(mesSel)) mesSel = (state.mesActivo && meses.includes(state.mesActivo))?state.mesActivo:meses[0];
+  sel.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option ${m===mesSel?'selected':''}>${esc(m)}</option>`).join('');
+}
+function render(){
+  fechaHoy();
+  renderSummary();
+  renderEditorFilter();
+  renderMesSelector();
+  renderPaste();
+  const boardEl=document.getElementById('board'), recEl=document.getElementById('recursosView');
+  if(vista==='recursos'){ boardEl.style.display='none'; recEl.style.display='block'; renderRecursosView(); return; }
+  boardEl.style.display='flex'; recEl.style.display='none';
+  const vis=tarjetasVisibles();
+  document.getElementById('filterCount').textContent=vis.length+' de '+state.tarjetas.length;
+  // guardar scroll de columnas para no perder la posicion al re-renderizar
+  const scrolls={}; document.querySelectorAll('.col-body').forEach(b=>{scrolls[b.dataset.estado]=b.scrollTop;});
+  board.innerHTML=ESTADOS.map(col=>{
+    const cards=vis.filter(t=>t.estado===col.k);
+    return `<div class="col" data-estado="${col.k}">
+      <div class="col-head"><span class="ic">${col.ic}</span><span class="nm">${col.nm}</span><span class="cnt">${cards.length}</span></div>
+      <div class="col-body" data-estado="${col.k}">
+        ${cards.length?cards.map(cardHTML).join(''):'<div class="col-empty">Arrastra tarjetas aquí</div>'}
+      </div>
+      <div class="col-add"><button onclick="nuevaTarjeta('${col.k}')">＋ Agregar en ${col.nm}</button></div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.col-body').forEach(b=>{if(scrolls[b.dataset.estado]!==undefined)b.scrollTop=scrolls[b.dataset.estado];});
+  wireDnD();
+}
+function renderSummary(){
+  const hoy=state.tarjetas.filter(t=>t.estado!=='entregado' && t.prioridad==='hoy').length;
+  let vencidos=0;
+  state.tarjetas.forEach(t=>{if(t.estado==='pendiente'||t.estado==='proceso'){const d=dlInfo(t.deadline);if(d&&d.cls==='vencido')vencidos++;}});
+  const proceso=state.tarjetas.filter(t=>t.estado==='proceso').length;
+  document.getElementById('summary').innerHTML=`
+    <span class="sum-chip red"><span class="dot"></span>${hoy} para hoy</span>
+    ${vencidos?`<span class="sum-chip red"><span class="dot"></span>${vencidos} vencido(s)</span>`:''}
+    <span class="sum-chip amber"><span class="dot"></span>${proceso} en proceso</span>
+    ${state.tarjetas.filter(t=>t.feedback==='corregir').length?`<span class="sum-chip red"><span class="dot"></span>${state.tarjetas.filter(t=>t.feedback==='corregir').length} por corregir</span>`:''}`;
+}
+function renderEditorFilter(){
+  const sel=document.getElementById('fEditor');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Editor: todos</option>'+state.editores.map(e=>`<option ${fEditor===e?'selected':''}>${esc(e)}</option>`).join('');
+}
+function renderPaste(){
+  const w=document.getElementById('pasteWrap');
+  w.innerHTML=clipCard?`<button class="mini-btn" style="color:var(--acc)" onclick="pegarCard()">📋 Pegar "${esc(clipCard.cliente)}"</button>`:'';
+}
+function cardHTML(t){
+  const p=PRIOS[t.prioridad]||PRIOS.sin;
+  const dl=dlInfo(t.deadline);
+  const prog=t.cantidad>0?Math.min(100,(t.editados/t.cantidad)*100):0;
+  const next=nextEstado(t.estado);
+  return `<div class="card${t.id===selId?' sel':''}${t.feedback?' fb-'+t.feedback:''}" draggable="true" data-id="${t.id}">
+    <div class="prio-stripe prio-${p.cls}"></div>
+    <div class="card-in">
+      <div class="card-top">
+        <div class="cli">${esc(t.cliente)}${t.feedback?` <span class="fb-badge ${t.feedback}">${t.feedback==='corregir'?'✏️ CORREGIR':t.feedback==='corregido'?'🔧 CORREGIDO':'✅ APROBADO'}</span>`:''}</div>
+        <span class="prio-tag ${p.cls}" title="Cambiar prioridad" onclick="ciclarPrio('${t.id}')">${t.prioridad==='hoy'?'🔴':t.prioridad==='semana'?'🟠':t.prioridad==='despues'?'🔵':'⚪'} ${p.nm}</span>
+      </div>
+      <div class="meta">
+        <span class="qty">${t.cantidad} ${t.cantidad==1?'video':'videos'}</span>
+        <span class="tipo-tag tipo-${esc(t.tipo||'Reel')}">${esc(t.tipo||'Reel')}</span>
+        ${t.estilo?`<span class="estilo-tag">🎚️ ${esc(t.estilo)}</span>`:''}
+        ${t.editor?`<span class="editor-tag">✂️ ${esc(t.editor)}</span>`:''}
+        ${dl?`<span class="dl-badge ${dl.cls}">📅 ${dl.txt}</span>`:''}
+      </div>
+      <div class="prog"><div class="prog-track"><div class="prog-fill" style="width:${prog}%"></div></div><span class="prog-txt">${t.editados}/${t.cantidad}</span></div>
+      <div class="fb-row">
+        <button class="fb-btn ${t.feedback==='corregir'?'on cor':''}" title="Necesita corrección" onclick="setFeedback('${t.id}','corregir')">✏️ Corregir</button>
+        <button class="fb-btn ${t.feedback==='corregido'?'on cdo':''}" title="Ya corregido" onclick="setFeedback('${t.id}','corregido')">🔧 Corregido</button>
+        <button class="fb-btn ${t.feedback==='aprobado'?'on apr':''}" title="Aprobado" onclick="setFeedback('${t.id}','aprobado')">✅ Aprobado</button>
+      </div>
+      ${(function(){const n=(t.correcciones||[]).length,pend=(t.correcciones||[]).filter(x=>!x.hecho).length;
+        return `<button class="fb-notas-btn${n?' has':''}" onclick="abrirCorrecciones('${t.id}')">🗒️ ${n?('Correcciones · '+pend+' pendiente'+(pend===1?'':'s')+' de '+n):'Agregar corrección / feedback (Loom, notas)'}</button>`;})()}
+      ${recursosDe(t.cliente).length?`<div class="card-res">${recursosDe(t.cliente).map(r=>`<a href="${esc(r.url)}" target="_blank" class="res-chip" title="${esc(r.url)}">📁 <span class="rl">${esc(r.label||platform(r.url))}</span></a>`).join('')}</div>`:''}
+      ${t.notas?`<div class="card-notas">📝 ${esc(t.notas)}</div>`:''}
+      <div class="card-acts">
+        <button class="ca-btn" title="Un video menos editado" onclick="ajustarEd('${t.id}',-1)">−</button>
+        <button class="ca-btn" title="Un video más editado" onclick="ajustarEd('${t.id}',1)">＋</button>
+        ${t.estado!=='editado'&&t.estado!=='entregado'?`<button class="ca-btn done grow" onclick="marcarEditado('${t.id}')">✓ Editado</button>`:''}
+        ${next?`<button class="ca-btn next" title="Mover a ${labelEstado(next)}" onclick="moverEstado('${t.id}','${next}')">→</button>`:''}
+        <button class="ca-btn" title="Recursos del cliente" onclick="abrirRecursos('${esc(t.cliente)}')">📁</button>
+        <button class="ca-btn" title="Editar" onclick="editarTarjeta('${t.id}')">✎</button>
+        <button class="ca-btn" title="Copiar" onclick="copiarCard('${t.id}')">⧉</button>
+        <button class="ca-btn danger" title="Eliminar" onclick="borrarTarjeta('${t.id}')">🗑</button>
+      </div>
+    </div>
+  </div>`;
+}
+function nextEstado(k){const i=ESTADOS.findIndex(e=>e.k===k);return i<ESTADOS.length-1?ESTADOS[i+1].k:null;}
+function labelEstado(k){const e=ESTADOS.find(x=>x.k===k);return e?e.nm:k;}
+
+/* ============ ACCIONES ============ */
+window.ciclarPrio=(id)=>{const t=state.tarjetas.find(x=>x.id===id);const orden=['hoy','semana','despues','sin'];t.prioridad=orden[(orden.indexOf(t.prioridad)+1)%orden.length];save();render();};
+window.setFeedback=(id,fb)=>{const t=state.tarjetas.find(x=>x.id===id);
+  if(t.feedback===fb){t.feedback='';}else{t.feedback=fb;}
+  save();render();
+  toast(fb==='corregir'?'Marcado: necesita corrección 🔴':fb==='corregido'?'Marcado: corregido 🟡':fb==='aprobado'?'Aprobado ✅':'Estado quitado');};
+window.ajustarEd=(id,d)=>{const t=state.tarjetas.find(x=>x.id===id);t.editados=Math.max(0,Math.min(t.cantidad,(t.editados||0)+d));save();render();};
+window.marcarEditado=(id)=>{const t=state.tarjetas.find(x=>x.id===id);t.editados=t.cantidad;t.estado='editado';save();render();toast(t.cliente+' marcado como editado ✅');};
+window.moverEstado=(id,est)=>{const t=state.tarjetas.find(x=>x.id===id);t.estado=est;if(est==='editado'&&t.cantidad>0)t.editados=t.cantidad;save();render();};
+window.borrarTarjeta=(id)=>{const t=state.tarjetas.find(x=>x.id===id);if(confirm('¿Eliminar la tarjeta de '+t.cliente+'?')){state.tarjetas=state.tarjetas.filter(x=>x.id!==id);save();render();toast('Tarjeta eliminada');}};
+window.copiarCard=(id)=>{const t=state.tarjetas.find(x=>x.id===id);clipCard=clone(t);delete clipCard.id;try{localStorage.setItem(LS+'_clip',JSON.stringify(clipCard));}catch(e){}renderPaste();toast('Tarjeta copiada — pega con el botón o Ctrl+V');};
+window.pegarCard=()=>{if(!clipCard)return;const c=clone(clipCard);c.id=uid('t');c.creado=Date.now();(c.recursos||[]).forEach(r=>r.id=uid('r'));state.tarjetas.unshift(c);save();render();toast('Tarjeta pegada');};
+window.nuevaTarjeta=(estado)=>abrirTarjeta(null,estado);
+window.editarTarjeta=(id)=>abrirTarjeta(state.tarjetas.find(x=>x.id===id));
+
+/* ============ DRAG & DROP ============ */
+let dragId=null;
+function wireDnD(){
+  document.querySelectorAll('.card').forEach(card=>{
+    card.addEventListener('dragstart',e=>{dragId=card.dataset.id;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    card.addEventListener('dragend',()=>{dragId=null;document.querySelectorAll('.dragging,.card-over').forEach(x=>x.classList.remove('dragging','card-over'));document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));});
+    card.addEventListener('dragover',e=>{e.preventDefault();document.querySelectorAll('.card-over').forEach(x=>x.classList.remove('card-over'));if(card.dataset.id!==dragId)card.classList.add('card-over');});
+    card.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();soltar(card.closest('.col').dataset.estado,card.dataset.id);});
+  });
+  document.querySelectorAll('.col').forEach(col=>{
+    col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drop-target');});
+    col.addEventListener('dragleave',e=>{if(!col.contains(e.relatedTarget))col.classList.remove('drop-target');});
+    col.addEventListener('drop',e=>{e.preventDefault();soltar(col.dataset.estado,null);});
+  });
+}
+function soltar(estado,targetId){
+  if(!dragId)return;
+  const arr=state.tarjetas;
+  const from=arr.findIndex(t=>t.id===dragId); if(from<0)return;
+  const moved=arr.splice(from,1)[0];
+  moved.estado=estado;
+  if(estado==='editado'&&moved.cantidad>0&&moved.editados<moved.cantidad)moved.editados=moved.cantidad;
+  if(targetId&&targetId!==dragId){
+    const to=arr.findIndex(t=>t.id===targetId);
+    arr.splice(to<0?arr.length:to,0,moved);
+  } else arr.push(moved);
+  dragId=null;save();render();
+}
+
+/* ============ MODAL TARJETA ============ */
+const overlay=document.getElementById('overlay'),modal=document.getElementById('modal');
+window.closeModal=()=>overlay.classList.remove('show');
+overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+let mPrio='semana', mEstadoNew='pendiente';
+function abrirTarjeta(t,estadoDefault){
+  const isEdit=!!t;
+  mEstadoNew=estadoDefault||'pendiente';
+  const j=t||{cliente:state.clientes[0]||'',cantidad:1,tipo:'Reel',editados:0,estado:mEstadoNew,prioridad:'semana',deadline:'',editor:'',notas:'',recursos:[]};
+  mPrio=j.prioridad||'semana';
+  const opt=(arr,sel)=>arr.map(o=>`<option ${o===sel?'selected':''}>${esc(o)}</option>`).join('');
+  modal.innerHTML=`
+    <div class="modal-head"><h3>${isEdit?'✎ Editar tarjeta':'＋ Nueva tarjeta'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="fld"><label>Cliente</label><select id="t_cliente">${opt(state.clientes,j.cliente)}</select></div>
+      <div class="fld"><label>Editor asignado</label><select id="t_editor"><option value="">— sin asignar —</option>${opt(state.editores,j.editor)}</select></div>
+      <div class="fld"><label>Cantidad de videos</label><input type="number" min="0" id="t_cantidad" value="${esc(j.cantidad)}"></div>
+      <div class="fld"><label>Tipo</label><select id="t_tipo">${opt(TIPOS,j.tipo)}</select></div>
+      <div class="fld"><label>Ya editados</label><input type="number" min="0" id="t_editados" value="${esc(j.editados)}"></div>
+      <div class="fld"><label>Fecha de entrega</label><input type="date" id="t_deadline" value="${esc(j.deadline||'')}"></div>
+      <div class="fld full"><label>Prioridad</label>
+        <div class="prio-pick" id="prioPick">
+          <button type="button" data-p="hoy" onclick="pickPrio('hoy')"><span class="dot" style="background:var(--red)"></span>Para hoy</button>
+          <button type="button" data-p="semana" onclick="pickPrio('semana')"><span class="dot" style="background:var(--amber)"></span>Esta semana</button>
+          <button type="button" data-p="despues" onclick="pickPrio('despues')"><span class="dot" style="background:var(--blue)"></span>Después</button>
+        </div></div>
+      <div class="fld full"><label>Notas para el editor</label><textarea id="t_notas" rows="2" placeholder="Estilo, referencias, indicaciones...">${esc(j.notas)}</textarea></div>
+    </div></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn" onclick="guardarTarjeta('${isEdit?j.id:''}')">${isEdit?'Guardar':'Crear'}</button></div>`;
+  overlay.classList.add('show');
+  pickPrio(mPrio);
+}
+window.pickPrio=(p)=>{mPrio=p;document.querySelectorAll('#prioPick button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));};
+window.guardarTarjeta=(id)=>{
+  const g=k=>document.getElementById('t_'+k).value;
+  const cant=parseInt(g('cantidad'))||0;
+  const obj={cliente:g('cliente'),editor:g('editor'),cantidad:cant,tipo:g('tipo'),
+    editados:Math.min(cant,Math.max(0,parseInt(g('editados'))||0)),prioridad:mPrio,deadline:g('deadline')||'',notas:g('notas').trim()};
+  if(id){const t=state.tarjetas.find(x=>x.id===id);Object.assign(t,obj);toast('Tarjeta actualizada');}
+  else{obj.id=uid('t');obj.estado=mEstadoNew||'pendiente';obj.creado=Date.now();obj.mes=mesSel||state.mesActivo||'';state.tarjetas.unshift(obj);toast('Tarjeta creada');}
+  save();closeModal();render();
+};
+
+/* ============ MODAL CORRECCIONES / FEEDBACK ============ */
+window.abrirCorrecciones=(id)=>{renderCorrecciones(id);overlay.classList.add('show');};
+function renderCorrecciones(id){
+  const t=state.tarjetas.find(x=>x.id===id); if(!t.correcciones)t.correcciones=[];
+  const cs=t.correcciones;
+  modal.innerHTML=`
+    <div class="modal-head"><h3>🗒️ Correcciones · ${esc(t.cliente)}${t.editor?' · '+esc(t.editor):''}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px">Anota cada corrección por separado. Puedes pegar un link de <b>Loom</b> (o Drive) con el feedback en video. El editor marca ✓ cuando la resuelve.</p>
+      <div>${cs.length?cs.map((c,i)=>`<div class="corr-row ${c.hecho?'done':''}">
+        <button class="corr-chk" title="${c.hecho?'Marcar pendiente':'Marcar hecha'}" onclick="toggleCorreccion('${id}',${i})">${c.hecho?'✅':'⬜'}</button>
+        <div class="corr-info">
+          <div class="corr-tx">${c.texto?esc(c.texto):'<span class="hint">(sin texto)</span>'}</div>
+          ${c.url?`<a href="${esc(c.url)}" target="_blank" class="corr-link">${c.url.toLowerCase().includes('loom')?'🎥 Loom':'🔗 '+platform(c.url)}: ver</a>`:''}
+        </div>
+        <button class="icon-btn" style="color:var(--red)" onclick="delCorreccion('${id}',${i})">🗑</button>
+      </div>`).join(''):'<div class="hint" style="padding:10px 0">Sin correcciones aún.</div>'}</div>
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+        <div class="fld"><label>Nueva corrección</label><textarea id="corr_tx" rows="2" placeholder="Ej. Cambiar la música del segundo 0:15, el logo va más grande..."></textarea></div>
+        <div class="fld" style="margin-top:9px"><label>Link de feedback (Loom / Drive, opcional)</label><input id="corr_url" placeholder="https://www.loom.com/share/..." onkeydown="if(event.key==='Enter')document.getElementById('corr_add').click()"></div>
+        <button class="btn" id="corr_add" style="margin-top:11px;width:100%" onclick="addCorreccion('${id}')">＋ Agregar corrección</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`;
+}
+window.addCorreccion=(id)=>{const t=state.tarjetas.find(x=>x.id===id);if(!t.correcciones)t.correcciones=[];
+  const tx=document.getElementById('corr_tx').value.trim(), url=document.getElementById('corr_url').value.trim();
+  if(!tx&&!url){toast('Escribe la corrección o pega un link');return;}
+  t.correcciones.push({id:uid('c'),texto:tx,url:url,hecho:false,fecha:new Date().toISOString().slice(0,10)});
+  if(t.feedback!=='corregir'&&t.feedback!=='corregido'){t.feedback='corregir';} // marca el estado solo
+  save();renderCorrecciones(id);render();document.getElementById('corr_tx').focus();toast('Corrección agregada');};
+window.toggleCorreccion=(id,i)=>{const t=state.tarjetas.find(x=>x.id===id);t.correcciones[i].hecho=!t.correcciones[i].hecho;
+  // si todas están hechas, sugiere pasar a corregido
+  if(t.correcciones.length&&t.correcciones.every(c=>c.hecho)&&t.feedback==='corregir'){t.feedback='corregido';}
+  save();renderCorrecciones(id);render();};
+window.delCorreccion=(id,i)=>{const t=state.tarjetas.find(x=>x.id===id);t.correcciones.splice(i,1);save();renderCorrecciones(id);render();};
+
+/* ============ MODAL RECURSOS (por cliente) ============ */
+window.abrirRecursos=(cli)=>{renderRecursos(cli);overlay.classList.add('show');};
+function renderRecursos(cli){
+  if(!state.recursos)state.recursos={}; if(!state.recursos[cli])state.recursos[cli]=[];
+  const rs=state.recursos[cli];
+  modal.innerHTML=`
+    <div class="modal-head"><h3>📁 Recursos · ${esc(cli)}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px">Links de carpetas y recursos del cliente (videos crudos, fotos, brief, editados...). Se ven en todas sus tarjetas.</p>
+      <div>${rs.length?rs.map((r,i)=>`<div class="res-row"><span style="font-size:17px">📁</span>
+        <div class="rinfo"><div class="rname">${esc(r.label||platform(r.url))}</div><div class="rurl"><a href="${esc(r.url)}" target="_blank">${esc(r.url)}</a></div></div>
+        <button class="icon-btn" onclick="delRecurso('${esc(cli)}',${i})" style="color:var(--red)">🗑</button></div>`).join(''):'<div class="hint" style="padding:12px 0">Sin recursos aún.</div>'}</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1.4fr auto;align-items:end;gap:10px;margin-top:8px">
+        <div class="fld"><label>Nombre</label><input id="r_label" placeholder="Ej. Videos crudos" onkeydown="if(event.key==='Enter')document.getElementById('r_add').click()"></div>
+        <div class="fld"><label>Link</label><input id="r_url" placeholder="https://drive.google.com/..." onkeydown="if(event.key==='Enter')document.getElementById('r_add').click()"></div>
+        <button class="btn" id="r_add" style="height:40px" onclick="addRecurso('${esc(cli)}')">＋</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`;
+}
+window.addRecurso=(cli)=>{const l=document.getElementById('r_label').value.trim(),u=document.getElementById('r_url').value.trim();if(!u){toast('Pega el link');return;}if(!state.recursos[cli])state.recursos[cli]=[];state.recursos[cli].push({id:uid('r'),label:l,url:u});save();renderRecursos(cli);render();document.getElementById('r_label').focus();toast('Recurso añadido');};
+window.delRecurso=(cli,i)=>{state.recursos[cli].splice(i,1);save();renderRecursos(cli);render();};
+
+/* ============ ORDENAR / EXPORT / IMPORT ============ */
+document.getElementById('btnOrdenar').onclick=()=>{
+  state.tarjetas.sort((a,b)=>{
+    if(a.estado!==b.estado)return ESTADOS.findIndex(e=>e.k===a.estado)-ESTADOS.findIndex(e=>e.k===b.estado);
+    const pa=PRIO_ORDEN[a.prioridad]??3,pb=PRIO_ORDEN[b.prioridad]??3;if(pa!==pb)return pa-pb;
+    const da=a.deadline||'9999',db=b.deadline||'9999';return da<db?-1:da>db?1:0;
+  });
+  save();render();toast('Ordenado por prioridad y fecha');
+};
+function download(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+document.getElementById('btnExport').onclick=()=>{download('tablero_backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(state,null,2),'application/json');toast('Backup exportado');};
+const fileInput=document.getElementById('fileInput');
+document.getElementById('btnImport').onclick=()=>fileInput.click();
+fileInput.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(d.tarjetas){state=d;state.tarjetas.forEach(t=>{if(!t.recursos)t.recursos=[];});save();render();toast('Datos importados');}else alert('Archivo no válido');}catch(err){alert('No se pudo leer: '+err.message);}};rd.readAsText(f);fileInput.value='';};
+
+/* ============ VISTA RECURSOS ============ */
+function renderRecursosView(){
+  const rv=document.getElementById('recursosView');
+  const clientes=Object.keys(state.recursos||{}).filter(cli=>{
+    if(busca)return cli.toLowerCase().includes(busca.toLowerCase());
+    return true;
+  }).sort();
+  // también clientes de tarjetas aunque no tengan recursos aún
+  const conTarjeta=[...new Set(state.tarjetas.map(t=>t.cliente))].filter(c=>!clientes.includes(c)&&(!busca||c.toLowerCase().includes(busca.toLowerCase()))).sort();
+  const todos=[...clientes,...conTarjeta];
+  if(!todos.length){rv.innerHTML='<div style="text-align:center;color:var(--muted2);padding:60px">Sin recursos aún. Importa del Studio Panel o agrégalos desde cada tarjeta.</div>';return;}
+  rv.innerHTML=`<div class="rec-grid">${todos.map(cli=>{
+    const rs=recursosDe(cli);
+    return `<div class="rec-card">
+      <h4>${esc(cli)} <button class="add" onclick="abrirRecursos('${esc(cli)}')">＋ Añadir</button></h4>
+      ${rs.length?rs.map((r,i)=>`<div class="rec-link"><span class="ri">📁</span>
+        <div class="rinf"><div class="rn">${esc(r.label||platform(r.url))}</div><div class="ru"><a href="${esc(r.url)}" target="_blank">${esc(r.url)}</a></div></div>
+        <button class="icon-btn" style="color:var(--red)" onclick="delRecurso('${esc(cli)}',${i})">🗑</button></div>`).join(''):'<div class="hint" style="padding:6px 2px">Sin recursos. Pulsa “＋ Añadir”.</div>'}
+    </div>`;}).join('')}</div>`;
+}
+document.getElementById('vistaSeg').addEventListener('click',e=>{const b=e.target.closest('.seg-b');if(!b)return;vista=b.dataset.v;document.querySelectorAll('#vistaSeg .seg-b').forEach(x=>x.classList.toggle('active',x===b));render();});
+
+/* ============ EVENTOS ============ */
+document.getElementById('btnNew').onclick=()=>abrirTarjeta(null,'pendiente');
+document.getElementById('search').addEventListener('input',e=>{busca=e.target.value;render();});
+document.getElementById('prioFilter').addEventListener('click',e=>{const b=e.target.closest('.prio-btn');if(!b)return;fPrio=b.dataset.p;document.querySelectorAll('.prio-btn').forEach(x=>x.classList.toggle('active',x===b));render();});
+document.getElementById('fEditor').addEventListener('change',e=>{fEditor=e.target.value;render();});
+document.getElementById('mesSel').addEventListener('change',e=>{mesSel=e.target.value;mesUsuario=true;render();});
+document.getElementById('fFeedback').addEventListener('change',e=>{fFeedback=e.target.value;render();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  const typing=/INPUT|TEXTAREA|SELECT/.test((e.target&&e.target.tagName)||'')||overlay.classList.contains('show');
+  if((e.ctrlKey||e.metaKey)&&!typing&&e.key.toLowerCase()==='v'&&clipCard){e.preventDefault();pegarCard();}
+});
+/* ============ IMPORTAR DEL STUDIO PANEL (sin montos) ============ */
+document.getElementById('btnImportPagos').onclick=()=>document.getElementById('pagosInput').click();
+document.getElementById('pagosInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.cards||!Array.isArray(d.cards)){alert('Ese archivo no es el de "Exportar al Tablero" del Studio Panel.');return;}importarDePagos(d.cards);}catch(err){alert('No se pudo leer: '+err.message);}};
+  rd.readAsText(f);e.target.value='';};
+function importarDePagos(cards){
+  let nuevos=0, actualizados=0;
+  if(!state.recursos)state.recursos={};
+  const reemplazar=confirm('¿Cómo quieres importar del Studio Panel?\n\nACEPTAR = Reemplazar TODO el tablero limpio (borra las tarjetas actuales y las recrea; recomendado si hay duplicados o datos viejos).\n\nCANCELAR = Solo agregar/actualizar lo nuevo sin borrar (respeta prioridades y avances que ya moviste).');
+  if(reemplazar){ state.tarjetas=[]; state.recursos={}; }
+  cards.forEach(ic=>{
+    if(ic.cliente && !state.clientes.includes(ic.cliente)) state.clientes.push(ic.cliente);
+    if(ic.editor && ic.editor!=='' && !state.editores.includes(ic.editor)) state.editores.push(ic.editor);
+    if((ic.recursos||[]).length){
+      if(!state.recursos[ic.cliente])state.recursos[ic.cliente]=[];
+      ic.recursos.forEach(r=>{if(r.url&&!state.recursos[ic.cliente].some(x=>x.url===r.url))state.recursos[ic.cliente].push({id:uid('r'),label:r.label,url:r.url});});
+    }
+    const ex=reemplazar?null:state.tarjetas.find(t=>t.origen && t.origen===ic.origen);
+    if(ex){
+      ex.cliente=ic.cliente; ex.editor=ic.editor||ex.editor; ex.cantidad=ic.cantidad;
+      ex.tipo=ic.tipo||ex.tipo; ex.estilo=ic.estilo||''; ex.deadline=ic.deadline||ex.deadline;
+      if(ex.editados>ex.cantidad)ex.editados=ex.cantidad;
+      actualizados++;
+    } else {
+      const hechos=Math.min(ic.cantidad||0,Math.max(0,ic.editados||0));
+      const estado=(ic.cantidad>0&&hechos>=ic.cantidad)?'editado':(hechos>0?'proceso':'pendiente');
+      state.tarjetas.push({id:uid('t'),origen:ic.origen,cliente:ic.cliente,editor:ic.editor||'',
+        cantidad:ic.cantidad||0,editados:hechos,tipo:ic.tipo||'Reel',estilo:ic.estilo||'',
+        prioridad:'semana',estado,deadline:ic.deadline||'',notas:'',creado:Date.now()});
+      nuevos++;
+    }
+  });
+  save();render();
+  toast(reemplazar?`Tablero reemplazado: ${nuevos} tarjetas`:`Del Studio Panel: ${nuevos} nueva(s), ${actualizados} actualizada(s)`);
+}
+
+render();
+(function(){try{const s=JSON.parse(localStorage.getItem(LS+'_nube')||'null');if(s&&s.config&&s.sala)conectarNube(s.config,s.sala);}catch(e){}})();
+
+/* === AUTO-CONEXION A LA NUBE (config incrustada) === */
+(function(){
+  var CONFIG = {
+  apiKey: "AIzaSyBwtzR097g_MXiP8t74-waXlCqTIG4K2_0",
+  authDomain: "ed-studio-78dd0.firebaseapp.com",
+  projectId: "ed-studio-78dd0",
+  storageBucket: "ed-studio-78dd0.firebasestorage.app",
+  messagingSenderId: "695591675047",
+  appId: "1:695591675047:web:0455bd0de53e60936ba782"
+};
+  var SALA = "edstudio";
+  try{
+    var yaGuardado = localStorage.getItem(LS+'_nube');
+    if(!yaGuardado){ localStorage.setItem(LS+'_nube', JSON.stringify({config:CONFIG, sala:SALA})); }
+    if(typeof fb==='undefined' || !fb){ conectarNube(CONFIG, SALA); }
+  }catch(e){ try{ conectarNube(CONFIG, SALA); }catch(_){} }
+})();
+
+</script>
+</body>
+</html>
