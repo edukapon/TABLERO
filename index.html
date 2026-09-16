@@ -465,7 +465,7 @@ function cardHTML(t){
       </div>
       <div class="meta">
         <span class="qty">${t.cantidad} ${t.cantidad==1?'video':'videos'}</span>
-        <span class="tipo-tag tipo-${esc(t.tipo||'Reel')}">${esc(t.tipo||'Reel')}</span>
+        ${(t.tiposTxt && t.tiposTxt.indexOf('·')>=0)?`<span class="tipo-tag tipo-Mixto" title="${esc(t.tiposTxt)}">${esc(t.tiposTxt)}</span>`:`<span class="tipo-tag tipo-${esc(t.tipo||'Reel')}">${esc(t.tipo||'Reel')}</span>`}
         ${t.estilo?`<span class="estilo-tag">🎚️ ${esc(t.estilo)}</span>`:''}
         ${t.editor?`<span class="editor-tag">✂️ ${esc(t.editor)}</span>`:''}
         ${dl?`<span class="dl-badge ${dl.cls}">📅 ${dl.txt}</span>`:''}
@@ -732,23 +732,14 @@ function importarDePagos(cards){
 render();
 (function(){try{const s=JSON.parse(localStorage.getItem(LS+'_nube')||'null');if(s&&s.config&&s.sala)conectarNube(s.config,s.sala);}catch(e){}})();
 
-/* === AUTO-CONEXION A LA NUBE (config incrustada) === */
-(function(){
-  var CONFIG = {
+(function(){var CONFIG={
   apiKey: "AIzaSyBwtzR097g_MXiP8t74-waXlCqTIG4K2_0",
   authDomain: "ed-studio-78dd0.firebaseapp.com",
   projectId: "ed-studio-78dd0",
   storageBucket: "ed-studio-78dd0.firebasestorage.app",
   messagingSenderId: "695591675047",
   appId: "1:695591675047:web:0455bd0de53e60936ba782"
-};
-  var SALA = "edstudio";
-  try{
-    if(!localStorage.getItem(LS+'_nube')){ localStorage.setItem(LS+'_nube', JSON.stringify({config:CONFIG, sala:SALA})); }
-    if(typeof fb==='undefined' || !fb){ conectarNube(CONFIG, SALA); }
-  }catch(e){ try{ conectarNube(CONFIG, SALA); }catch(_){} }
-})();
-
+};var SALA="edstudio";try{if(!localStorage.getItem(LS+"_nube")){localStorage.setItem(LS+"_nube",JSON.stringify({config:CONFIG,sala:SALA}));}if(typeof fb==="undefined"||!fb){conectarNube(CONFIG,SALA);}}catch(e){try{conectarNube(CONFIG,SALA);}catch(_){}}})();
 </script>
 </body>
 </html>
