@@ -301,7 +301,7 @@ function suscribir(){
 }
 function pushNubeDebounced(){clearTimeout(pushTimer);pushTimer=setTimeout(pushNube,400);}
 function pushNube(){if(!fb||!fbDb||!sala)return;try{
-  fbDb.collection('tableros').doc(sala).set({tarjetas:state.tarjetas||[],recursos:state.recursos||{},clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()});
+  fbDb.collection('tableros').doc(sala).set({tarjetas:state.tarjetas||[],recursos:state.recursos||{},clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()},{merge:true});
 }catch(e){}}
 function estadoNubeUI(){
   const b=document.getElementById('btnNube'); if(!b)return;
@@ -744,8 +744,7 @@ render();
 };
   var SALA = "edstudio";
   try{
-    var yaGuardado = localStorage.getItem(LS+'_nube');
-    if(!yaGuardado){ localStorage.setItem(LS+'_nube', JSON.stringify({config:CONFIG, sala:SALA})); }
+    if(!localStorage.getItem(LS+'_nube')){ localStorage.setItem(LS+'_nube', JSON.stringify({config:CONFIG, sala:SALA})); }
     if(typeof fb==='undefined' || !fb){ conectarNube(CONFIG, SALA); }
   }catch(e){ try{ conectarNube(CONFIG, SALA); }catch(_){} }
 })();
