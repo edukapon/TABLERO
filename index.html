@@ -209,6 +209,7 @@ a{color:var(--acc);text-decoration:none}
   <input class="search" id="search" placeholder="🔍 Buscar cliente o editor...">
   <select id="mesSel" title="Mes"></select>
   <button class="mini-btn con-btn" id="btnNube" onclick="abrirNube()">☁️ Nube</button>
+  <button class="btn" id="btnRecGen" onclick="abrirRecursosGenerales()" style="background:linear-gradient(135deg,#ffb547,#ff8a3d)">📂 Recursos de edición</button>
   <button class="btn" id="btnNew">＋ Nueva tarjeta</button>
 </div>
 <div class="filters">
@@ -291,6 +292,7 @@ function suscribir(){
     aplicandoRemoto=true;
     if(Array.isArray(d.tarjetas))state.tarjetas=d.tarjetas;
     if(d.recursos)state.recursos=d.recursos;
+    if(Array.isArray(d.recursosGenerales))state.recursosGenerales=d.recursosGenerales;
     if(Array.isArray(d.clientes))state.clientes=d.clientes;
     if(Array.isArray(d.editores))state.editores=d.editores;
     if(d.mesActivo){ const cambio=state.mesActivo!==d.mesActivo; state.mesActivo=d.mesActivo; if(cambio&&!mesUsuario)mesSel=d.mesActivo; } // sigue el mes activo del Studio
@@ -300,9 +302,19 @@ function suscribir(){
   },err=>{toast('Nube: '+err.message);});
 }
 function pushNubeDebounced(){clearTimeout(pushTimer);pushTimer=setTimeout(pushNube,400);}
-function pushNube(){if(!fb||!fbDb||!sala)return;try{
-  fbDb.collection('tableros').doc(sala).set({tarjetas:state.tarjetas||[],recursos:state.recursos||{},clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()},{merge:true});
-}catch(e){}}
+let cardsBorradas={}; // id -> timestamp, para que un borrado no revuelva por fusión
+function pushNube(){if(!fb||!fbDb||!sala)return;
+  const ref=fbDb.collection('tableros').doc(sala);
+  fbDb.runTransaction(function(t){return t.get(ref).then(function(doc){
+    const cloud=doc.exists?(doc.data()||{}):{};
+    // fusionar TARJETAS por id: unión de nube+local, gana la de updatedAt más reciente (no se pisan entre usuarios)
+    const byId={}; (Array.isArray(cloud.tarjetas)?cloud.tarjetas:[]).forEach(function(c){if(c&&c.id)byId[c.id]=c;});
+    (state.tarjetas||[]).forEach(function(c){if(!c||!c.id)return;const ex=byId[c.id];if(!ex||(c.updatedAt||0)>=(ex.updatedAt||0))byId[c.id]=c;});
+    Object.keys(cardsBorradas).forEach(function(id){const dt=cardsBorradas[id];const ex=byId[id];if(!ex||dt>=(ex.updatedAt||0))delete byId[id];});
+    const tarjetas=Object.keys(byId).map(function(k){return byId[k];});
+    t.set(ref,{tarjetas:tarjetas,recursos:state.recursos||{},recursosGenerales:state.recursosGenerales||[],clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()},{merge:true});
+  });}).catch(function(){});
+}
 function estadoNubeUI(){
   const b=document.getElementById('btnNube'); if(!b)return;
   b.innerHTML=fb?'☁️ En la nube <span class="nube-dot on"></span>':'☁️ Nube';
@@ -348,6 +360,7 @@ state.tarjetas.forEach(t=>{if(t.editados===undefined)t.editados=0;
   if(t.feedbackNota){t.correcciones.push({id:uid('c'),texto:t.feedbackNota,url:'',hecho:false,fecha:''});delete t.feedbackNota;}
 });
 if(!state.recursos)state.recursos={};
+if(!state.recursosGenerales)state.recursosGenerales=[];
 // migrar recursos de tarjetas viejas a nivel de cliente
 state.tarjetas.forEach(t=>{
   if(t.recursos&&t.recursos.length){
@@ -497,17 +510,17 @@ function nextEstado(k){const i=ESTADOS.findIndex(e=>e.k===k);return i<ESTADOS.le
 function labelEstado(k){const e=ESTADOS.find(x=>x.k===k);return e?e.nm:k;}
 
 /* ============ ACCIONES ============ */
-window.ciclarPrio=(id)=>{const t=state.tarjetas.find(x=>x.id===id);const orden=['hoy','semana','despues','sin'];t.prioridad=orden[(orden.indexOf(t.prioridad)+1)%orden.length];save();render();};
+window.ciclarPrio=(id)=>{const t=state.tarjetas.find(x=>x.id===id);const orden=['hoy','semana','despues','sin'];t.prioridad=orden[(orden.indexOf(t.prioridad)+1)%orden.length];t.updatedAt=Date.now();save();render();};
 window.setFeedback=(id,fb)=>{const t=state.tarjetas.find(x=>x.id===id);
   if(t.feedback===fb){t.feedback='';}else{t.feedback=fb;}
-  save();render();
+  t.updatedAt=Date.now();save();render();
   toast(fb==='corregir'?'Marcado: necesita corrección 🔴':fb==='corregido'?'Marcado: corregido 🟡':fb==='aprobado'?'Aprobado ✅':'Estado quitado');};
-window.ajustarEd=(id,d)=>{const t=state.tarjetas.find(x=>x.id===id);t.editados=Math.max(0,Math.min(t.cantidad,(t.editados||0)+d));save();render();};
-window.marcarEditado=(id)=>{const t=state.tarjetas.find(x=>x.id===id);t.editados=t.cantidad;t.estado='editado';save();render();toast(t.cliente+' marcado como editado ✅');};
-window.moverEstado=(id,est)=>{const t=state.tarjetas.find(x=>x.id===id);t.estado=est;if(est==='editado'&&t.cantidad>0)t.editados=t.cantidad;save();render();};
-window.borrarTarjeta=(id)=>{const t=state.tarjetas.find(x=>x.id===id);if(confirm('¿Eliminar la tarjeta de '+t.cliente+'?')){state.tarjetas=state.tarjetas.filter(x=>x.id!==id);save();render();toast('Tarjeta eliminada');}};
+window.ajustarEd=(id,d)=>{const t=state.tarjetas.find(x=>x.id===id);t.editados=Math.max(0,Math.min(t.cantidad,(t.editados||0)+d));t.updatedAt=Date.now();save();render();};
+window.marcarEditado=(id)=>{const t=state.tarjetas.find(x=>x.id===id);t.editados=t.cantidad;t.estado='editado';t.updatedAt=Date.now();save();render();toast(t.cliente+' marcado como editado ✅');};
+window.moverEstado=(id,est)=>{const t=state.tarjetas.find(x=>x.id===id);t.estado=est;if(est==='editado'&&t.cantidad>0)t.editados=t.cantidad;t.updatedAt=Date.now();save();render();};
+window.borrarTarjeta=(id)=>{const t=state.tarjetas.find(x=>x.id===id);if(confirm('¿Eliminar la tarjeta de '+t.cliente+'?')){cardsBorradas[id]=Date.now();state.tarjetas=state.tarjetas.filter(x=>x.id!==id);save();render();toast('Tarjeta eliminada');}};
 window.copiarCard=(id)=>{const t=state.tarjetas.find(x=>x.id===id);clipCard=clone(t);delete clipCard.id;try{localStorage.setItem(LS+'_clip',JSON.stringify(clipCard));}catch(e){}renderPaste();toast('Tarjeta copiada — pega con el botón o Ctrl+V');};
-window.pegarCard=()=>{if(!clipCard)return;const c=clone(clipCard);c.id=uid('t');c.creado=Date.now();(c.recursos||[]).forEach(r=>r.id=uid('r'));state.tarjetas.unshift(c);save();render();toast('Tarjeta pegada');};
+window.pegarCard=()=>{if(!clipCard)return;const c=clone(clipCard);c.id=uid('t');c.creado=Date.now();c.updatedAt=Date.now();(c.recursos||[]).forEach(r=>r.id=uid('r'));state.tarjetas.unshift(c);save();render();toast('Tarjeta pegada');};
 window.nuevaTarjeta=(estado)=>abrirTarjeta(null,estado);
 window.editarTarjeta=(id)=>abrirTarjeta(state.tarjetas.find(x=>x.id===id));
 
@@ -537,7 +550,7 @@ function soltar(estado,targetId){
     const to=arr.findIndex(t=>t.id===targetId);
     arr.splice(to<0?arr.length:to,0,moved);
   } else arr.push(moved);
-  dragId=null;save();render();
+  moved.updatedAt=Date.now();dragId=null;save();render();
 }
 
 /* ============ MODAL TARJETA ============ */
@@ -579,8 +592,8 @@ window.guardarTarjeta=(id)=>{
   const cant=parseInt(g('cantidad'))||0;
   const obj={cliente:g('cliente'),editor:g('editor'),cantidad:cant,tipo:g('tipo'),
     editados:Math.min(cant,Math.max(0,parseInt(g('editados'))||0)),prioridad:mPrio,deadline:g('deadline')||'',notas:g('notas').trim()};
-  if(id){const t=state.tarjetas.find(x=>x.id===id);Object.assign(t,obj);toast('Tarjeta actualizada');}
-  else{obj.id=uid('t');obj.estado=mEstadoNew||'pendiente';obj.creado=Date.now();obj.mes=mesSel||state.mesActivo||'';state.tarjetas.unshift(obj);toast('Tarjeta creada');}
+  if(id){const t=state.tarjetas.find(x=>x.id===id);Object.assign(t,obj);t.updatedAt=Date.now();toast('Tarjeta actualizada');}
+  else{obj.id=uid('t');obj.estado=mEstadoNew||'pendiente';obj.creado=Date.now();obj.updatedAt=Date.now();obj.mes=mesSel||state.mesActivo||'';state.tarjetas.unshift(obj);toast('Tarjeta creada');}
   save();closeModal();render();
 };
 
@@ -614,15 +627,37 @@ window.addCorreccion=(id)=>{const t=state.tarjetas.find(x=>x.id===id);if(!t.corr
   if(!tx&&!url){toast('Escribe la corrección o pega un link');return;}
   t.correcciones.push({id:uid('c'),texto:tx,url:url,hecho:false,fecha:new Date().toISOString().slice(0,10)});
   if(t.feedback!=='corregir'&&t.feedback!=='corregido'){t.feedback='corregir';} // marca el estado solo
-  save();renderCorrecciones(id);render();document.getElementById('corr_tx').focus();toast('Corrección agregada');};
+  t.updatedAt=Date.now();save();renderCorrecciones(id);render();document.getElementById('corr_tx').focus();toast('Corrección agregada');};
 window.toggleCorreccion=(id,i)=>{const t=state.tarjetas.find(x=>x.id===id);t.correcciones[i].hecho=!t.correcciones[i].hecho;
   // si todas están hechas, sugiere pasar a corregido
   if(t.correcciones.length&&t.correcciones.every(c=>c.hecho)&&t.feedback==='corregir'){t.feedback='corregido';}
-  save();renderCorrecciones(id);render();};
-window.delCorreccion=(id,i)=>{const t=state.tarjetas.find(x=>x.id===id);t.correcciones.splice(i,1);save();renderCorrecciones(id);render();};
+  t.updatedAt=Date.now();save();renderCorrecciones(id);render();};
+window.delCorreccion=(id,i)=>{const t=state.tarjetas.find(x=>x.id===id);t.correcciones.splice(i,1);t.updatedAt=Date.now();save();renderCorrecciones(id);render();};
 
-/* ============ MODAL RECURSOS (por cliente) ============ */
-window.abrirRecursos=(cli)=>{renderRecursos(cli);overlay.classList.add('show');};
+/* ============ RECURSOS GENERALES DE EDICIÓN (Drive general) ============ */
+window.abrirRecursosGenerales=()=>{renderRecGen();overlay.classList.add('show');};
+function renderRecGen(){
+  if(!state.recursosGenerales)state.recursosGenerales=[];
+  const rs=state.recursosGenerales;
+  modal.innerHTML=`
+    <div class="modal-head"><h3>📂 Recursos de edición (general)</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px">Links generales para TODO el equipo: el Drive general de recursos de edición (plantillas, música, SFX, presets, LUTs...). Lo ven todos los editores.</p>
+      <div>${rs.length?rs.map((r,i)=>`<div class="res-row"><span style="font-size:17px">📂</span>
+        <div class="rinfo"><div class="rname">${esc(r.label||platform(r.url))}</div><div class="rurl"><a href="${esc(r.url)}" target="_blank">${esc(r.url)}</a></div></div>
+        <button class="icon-btn" onclick="delRecGen(${i})" style="color:var(--red)">🗑</button></div>`).join(''):'<div class="hint" style="padding:12px 0">Sin links aún. Agrega tu Drive general abajo.</div>'}</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1.4fr auto;align-items:end;gap:10px;margin-top:8px">
+        <div class="fld"><label>Nombre</label><input id="rg_label" placeholder="Ej. Drive recursos edición" onkeydown="if(event.key==='Enter')document.getElementById('rg_add').click()"></div>
+        <div class="fld"><label>Link</label><input id="rg_url" placeholder="https://drive.google.com/..." onkeydown="if(event.key==='Enter')document.getElementById('rg_add').click()"></div>
+        <button class="btn" id="rg_add" style="height:40px" onclick="addRecGen()">＋</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`;
+}
+window.addRecGen=()=>{const l=document.getElementById('rg_label').value.trim(),u=document.getElementById('rg_url').value.trim();if(!u){toast('Pega el link');return;}state.recursosGenerales.push({id:uid('r'),label:l,url:u});save();renderRecGen();toast('Recurso general añadido');};
+window.delRecGen=(i)=>{state.recursosGenerales.splice(i,1);save();renderRecGen();toast('Recurso eliminado');};
+
+/* ============ MODAL RECURSOS (por cliente) ============ */window.abrirRecursos=(cli)=>{renderRecursos(cli);overlay.classList.add('show');};
 function renderRecursos(cli){
   if(!state.recursos)state.recursos={}; if(!state.recursos[cli])state.recursos[cli]=[];
   const rs=state.recursos[cli];
@@ -732,14 +767,7 @@ function importarDePagos(cards){
 render();
 (function(){try{const s=JSON.parse(localStorage.getItem(LS+'_nube')||'null');if(s&&s.config&&s.sala)conectarNube(s.config,s.sala);}catch(e){}})();
 
-(function(){var CONFIG={
-  apiKey: "AIzaSyBwtzR097g_MXiP8t74-waXlCqTIG4K2_0",
-  authDomain: "ed-studio-78dd0.firebaseapp.com",
-  projectId: "ed-studio-78dd0",
-  storageBucket: "ed-studio-78dd0.firebasestorage.app",
-  messagingSenderId: "695591675047",
-  appId: "1:695591675047:web:0455bd0de53e60936ba782"
-};var SALA="edstudio";try{if(!localStorage.getItem(LS+"_nube")){localStorage.setItem(LS+"_nube",JSON.stringify({config:CONFIG,sala:SALA}));}if(typeof fb==="undefined"||!fb){conectarNube(CONFIG,SALA);}}catch(e){try{conectarNube(CONFIG,SALA);}catch(_){}}})();
+(function(){var CONFIG={apiKey:"AIzaSyBwtzR097g_MXiP8t74-waXlCqTIG4K2_0",authDomain:"ed-studio-78dd0.firebaseapp.com",projectId:"ed-studio-78dd0",storageBucket:"ed-studio-78dd0.firebasestorage.app",messagingSenderId:"695591675047",appId:"1:695591675047:web:0455bd0de53e60936ba782"};var SALA="edstudio";try{if(!localStorage.getItem(LS+"_nube")){localStorage.setItem(LS+"_nube",JSON.stringify({config:CONFIG,sala:SALA}));}if(typeof fb==="undefined"||!fb){conectarNube(CONFIG,SALA);}}catch(e){try{conectarNube(CONFIG,SALA);}catch(_){}}})();
 </script>
 </body>
 </html>
