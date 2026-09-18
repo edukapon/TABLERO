@@ -312,7 +312,7 @@ function pushNube(){if(!fb||!fbDb||!sala)return;
     (state.tarjetas||[]).forEach(function(c){if(!c||!c.id)return;const ex=byId[c.id];if(!ex||(c.updatedAt||0)>=(ex.updatedAt||0))byId[c.id]=c;});
     Object.keys(cardsBorradas).forEach(function(id){const dt=cardsBorradas[id];const ex=byId[id];if(!ex||dt>=(ex.updatedAt||0))delete byId[id];});
     const tarjetas=Object.keys(byId).map(function(k){return byId[k];});
-    t.set(ref,{tarjetas:tarjetas,recursos:state.recursos||{},recursosGenerales:state.recursosGenerales||[],clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()},{merge:true});
+    t.set(ref,{tarjetas:tarjetas,recursosGenerales:state.recursosGenerales||[],clientes:state.clientes||[],editores:state.editores||[],mesActivo:state.mesActivo||'',ts:Date.now()},{merge:true});
   });}).catch(function(){});
 }
 function estadoNubeUI(){
@@ -369,7 +369,7 @@ state.tarjetas.forEach(t=>{
     delete t.recursos;
   }
 });
-function recursosDe(cli){return (state.recursos&&state.recursos[cli])||[];}
+function recursosDe(cli){const arr=(state.recursos&&state.recursos[cli])||[];const seen={},out=[];arr.forEach(r=>{const k=(r.url||'')+'|'+(r.label||'');if(!seen[k]){seen[k]=1;out.push(r);}});return out;}
 let clipCard=null;
 try{const c=localStorage.getItem(LS+'_clip');if(c)clipCard=JSON.parse(c);}catch(e){}
 let fPrio="", fEditor="", fFeedback="", busca="", selId=null, vista="tablero", mesSel="", mesUsuario=false;
@@ -676,8 +676,16 @@ function renderRecursos(cli){
     </div>
     <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`;
 }
-window.addRecurso=(cli)=>{const l=document.getElementById('r_label').value.trim(),u=document.getElementById('r_url').value.trim();if(!u){toast('Pega el link');return;}if(!state.recursos[cli])state.recursos[cli]=[];state.recursos[cli].push({id:uid('r'),label:l,url:u});save();renderRecursos(cli);render();document.getElementById('r_label').focus();toast('Recurso añadido');};
-window.delRecurso=(cli,i)=>{state.recursos[cli].splice(i,1);save();renderRecursos(cli);render();};
+window.addRecurso=(cli)=>{const l=document.getElementById('r_label').value.trim(),u=document.getElementById('r_url').value.trim();if(!u){toast('Pega el link');return;}if(!state.recursos[cli])state.recursos[cli]=[];state.recursos[cli].push({id:uid('r'),label:l,url:u});save();pushRecursosCliente(cli);renderRecursos(cli);render();document.getElementById('r_label').focus();toast('Recurso añadido');};
+window.delRecurso=(cli,i)=>{state.recursos[cli].splice(i,1);save();pushRecursosCliente(cli);renderRecursos(cli);render();};
+function pushRecursosCliente(cli){ if(!fb||!fbDb||!sala)return;
+  const ref=fbDb.collection('tableros').doc(sala);
+  const val=state.recursos[cli]||[];
+  fbDb.runTransaction(function(t){return t.get(ref).then(function(doc){
+    const d=doc.exists?(doc.data()||{}):{}; const rec=d.recursos||{}; rec[cli]=val;
+    t.set(ref,{recursos:rec},{merge:true});
+  });}).catch(function(){});
+}
 
 /* ============ ORDENAR / EXPORT / IMPORT ============ */
 document.getElementById('btnOrdenar').onclick=()=>{
