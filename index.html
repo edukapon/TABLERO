@@ -518,15 +518,6 @@ function cardHTML(t){
         return `<button class="fb-notas-btn${n?' has':''}" onclick="abrirCorrecciones('${t.id}')">🗒️ ${n?('Correcciones · '+pend+' pendiente'+(pend===1?'':'s')+' de '+n):'Agregar corrección / feedback (Loom, notas)'}</button>`;})()}
       ${recursosDe(t.cliente).length?`<div class="card-res">${recursosDe(t.cliente).map(r=>`<a href="${esc(r.url)}" target="_blank" class="res-chip" title="${esc(r.url)}">📁 <span class="rl">${esc(r.label||platform(r.url))}</span></a>`).join('')}</div>`:''}
       ${t.notas?`<div class="card-notas">📝 ${esc(t.notas)}</div>`:''}
-      <div class="fb-row">
-        <button class="fb-btn ${t.feedback==='corregir'?'on cor':''}" title="Necesita corrección" onclick="setFeedback('${t.id}','corregir')">✏️ Corregir</button>
-        <button class="fb-btn ${t.feedback==='corregido'?'on cdo':''}" title="Ya corregido" onclick="setFeedback('${t.id}','corregido')">🔧 Corregido</button>
-        <button class="fb-btn ${t.feedback==='aprobado'?'on apr':''}" title="Aprobado" onclick="setFeedback('${t.id}','aprobado')">✅ Aprobado</button>
-      </div>
-      ${(function(){const n=(t.correcciones||[]).length,pend=(t.correcciones||[]).filter(x=>!x.hecho).length;
-        return `<button class="fb-notas-btn${n?' has':''}" onclick="abrirCorrecciones('${t.id}')">🗒️ ${n?('Correcciones · '+pend+' pendiente'+(pend===1?'':'s')+' de '+n):'Agregar corrección / feedback (Loom, notas)'}</button>`;})()}
-      ${recursosDe(t.cliente).length?`<div class="card-res">${recursosDe(t.cliente).map(r=>`<a href="${esc(r.url)}" target="_blank" class="res-chip" title="${esc(r.url)}">📁 <span class="rl">${esc(r.label||platform(r.url))}</span></a>`).join('')}</div>`:''}
-      ${t.notas?`<div class="card-notas">📝 ${esc(t.notas)}</div>`:''}
       <div class="card-acts">
         <button class="ca-btn" title="Un video menos editado" onclick="ajustarEd('${t.id}',-1)">−</button>
         <button class="ca-btn" title="Un video más editado" onclick="ajustarEd('${t.id}',1)">＋</button>
