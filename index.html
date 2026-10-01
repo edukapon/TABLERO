@@ -428,6 +428,7 @@ function renderMesSelector(){
   const meses=mesesDisponibles();
   if(!meses.length){sel.style.display='none';return;}
   sel.style.display='';
+  if(!mesUsuario && !mesSel && state.mesActivo && meses.includes(state.mesActivo)) mesSel=state.mesActivo; // por defecto el mes en curso
   if(mesSel && !meses.includes(mesSel)) mesSel='';  // si el mes elegido ya no existe, vuelve a Todos
   sel.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option ${m===mesSel?'selected':''}>${esc(m)}</option>`).join('');
 }
@@ -519,8 +520,8 @@ function cardHTML(t){
       ${recursosDe(t.cliente).length?`<div class="card-res">${recursosDe(t.cliente).map(r=>`<a href="${esc(r.url)}" target="_blank" class="res-chip" title="${esc(r.url)}">📁 <span class="rl">${esc(r.label||platform(r.url))}</span></a>`).join('')}</div>`:''}
       ${t.notas?`<div class="card-notas">📝 ${esc(t.notas)}</div>`:''}
       <div class="card-acts">
-        <button class="ca-btn" title="Un video menos editado" onclick="ajustarEd('${t.id}',-1)">−</button>
-        <button class="ca-btn" title="Un video más editado" onclick="ajustarEd('${t.id}',1)">＋</button>
+        ${tieneSubs?'':`<button class="ca-btn" title="Un video menos editado" onclick="ajustarEd('${t.id}',-1)">−</button>
+        <button class="ca-btn" title="Un video más editado" onclick="ajustarEd('${t.id}',1)">＋</button>`}
         ${t.estado!=='editado'&&t.estado!=='entregado'?`<button class="ca-btn done grow" onclick="marcarEditado('${t.id}')">✓ Editado</button>`:''}
         ${next?`<button class="ca-btn next" title="Mover a ${labelEstado(next)}" onclick="moverEstado('${t.id}','${next}')">→</button>`:''}
         <button class="ca-btn" title="Recursos del cliente" onclick="abrirRecursos('${esc(t.cliente)}')">📁</button>
