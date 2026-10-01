@@ -262,6 +262,7 @@ a{color:var(--acc);text-decoration:none}
 /* ============ ESTADO ============ */
 const LS="edStudioTablero_v1";
 const uid=p=>(p||'t')+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const ESTADOS=[
   {k:'pendiente',ic:'📥',nm:'Por hacer'},
   {k:'proceso',ic:'⚙️',nm:'En proceso'},
@@ -307,7 +308,7 @@ function suscribir(){
     if(Array.isArray(d.recursosGenerales))state.recursosGenerales=d.recursosGenerales;
     if(Array.isArray(d.clientes))state.clientes=d.clientes;
     if(Array.isArray(d.editores))state.editores=d.editores;
-    if(d.mesActivo){ const cambio=state.mesActivo!==d.mesActivo; state.mesActivo=d.mesActivo; if(cambio&&!mesUsuario)mesSel=d.mesActivo; } // sigue el mes activo del Studio
+    if(d.mesActivo){ state.mesActivo=d.mesActivo; } // guarda el mes activo del Studio, pero NO fuerza el filtro
     try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
     render();
     aplicandoRemoto=false;
@@ -427,7 +428,7 @@ function renderMesSelector(){
   const meses=mesesDisponibles();
   if(!meses.length){sel.style.display='none';return;}
   sel.style.display='';
-  if(!mesSel || !meses.includes(mesSel)) mesSel = (state.mesActivo && meses.includes(state.mesActivo))?state.mesActivo:meses[0];
+  if(mesSel && !meses.includes(mesSel)) mesSel='';  // si el mes elegido ya no existe, vuelve a Todos
   sel.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option ${m===mesSel?'selected':''}>${esc(m)}</option>`).join('');
 }
 function render(){
@@ -507,8 +508,7 @@ function cardHTML(t){
         <button class="sub-pm" title="Menos" onclick="subEdit('${t.id}',${i},-1)">−</button>
         <button class="sub-pm" title="Más" onclick="subEdit('${t.id}',${i},1)">＋</button>
         ${s.url?`<a class="sub-link" href="${esc(s.url)}" target="_blank" title="Recursos">📁</a>`:''}
-      </div>`;}).join('')}<button class="sub-add" onclick="abrirSubcuentas('${t.id}')">⚙️ Editar sub-cuentas</button></div>`
-        :`<button class="fb-notas-btn" style="border-style:dashed" onclick="abrirSubcuentas('${t.id}')">📑 Dividir en sub-cuentas (Flip, Finanzas, René...)</button>`}
+      </div>`;}).join('')}<button class="sub-add" onclick="abrirSubcuentas('${t.id}')">⚙️ Editar sub-cuentas</button></div>`:''}
       <div class="fb-row">
         <button class="fb-btn ${t.feedback==='corregir'?'on cor':''}" title="Necesita corrección" onclick="setFeedback('${t.id}','corregir')">✏️ Corregir</button>
         <button class="fb-btn ${t.feedback==='corregido'?'on cdo':''}" title="Ya corregido" onclick="setFeedback('${t.id}','corregido')">🔧 Corregido</button>
@@ -524,6 +524,7 @@ function cardHTML(t){
         ${t.estado!=='editado'&&t.estado!=='entregado'?`<button class="ca-btn done grow" onclick="marcarEditado('${t.id}')">✓ Editado</button>`:''}
         ${next?`<button class="ca-btn next" title="Mover a ${labelEstado(next)}" onclick="moverEstado('${t.id}','${next}')">→</button>`:''}
         <button class="ca-btn" title="Recursos del cliente" onclick="abrirRecursos('${esc(t.cliente)}')">📁</button>
+        <button class="ca-btn" title="Dividir en sub-cuentas" onclick="abrirSubcuentas('${t.id}')">📑</button>
         <button class="ca-btn" title="Editar" onclick="editarTarjeta('${t.id}')">✎</button>
         <button class="ca-btn" title="Copiar" onclick="copiarCard('${t.id}')">⧉</button>
         <button class="ca-btn danger" title="Eliminar" onclick="borrarTarjeta('${t.id}')">🗑</button>
