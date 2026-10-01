@@ -150,6 +150,18 @@ a{color:var(--acc);text-decoration:none}
 .fb-notas-btn{background:var(--panel);border:1px dashed var(--line2);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:600;color:var(--muted2);text-align:left;transition:.13s;width:100%}
 .fb-notas-btn:hover{color:var(--txt);border-color:var(--acc)}
 .fb-notas-btn.has{border-style:solid;background:var(--red-bg);color:#ffb0b0;border-color:transparent}
+.subs-box{display:flex;flex-direction:column;gap:7px;background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:9px}
+.sub-row{display:flex;align-items:center;gap:7px}
+.sub-info{flex:1;min-width:0}
+.sub-nm{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub-ct{color:var(--muted);font-weight:600}
+.sub-track{height:5px;background:var(--bg);border-radius:20px;overflow:hidden;margin-top:3px}
+.sub-fill{height:100%;background:linear-gradient(90deg,var(--green),#5fe0b0);border-radius:20px;transition:width .3s}
+.sub-pm{width:22px;height:22px;border-radius:6px;background:var(--panel2);border:1px solid var(--line2);color:var(--muted);font-size:13px;font-weight:700;flex:0 0 auto}
+.sub-pm:hover{background:var(--blue-bg);color:#cdd7ff}
+.sub-link{width:24px;height:22px;display:flex;align-items:center;justify-content:center;text-decoration:none;flex:0 0 auto}
+.sub-add{background:transparent;border:1px dashed var(--line2);border-radius:7px;padding:5px;font-size:11px;font-weight:600;color:var(--muted2)}
+.sub-add:hover{color:var(--txt);border-color:var(--acc)}
 .corr-row{display:flex;align-items:flex-start;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px}
 .corr-row.done{opacity:.6}
 .corr-row.done .corr-tx{text-decoration:line-through}
@@ -467,7 +479,13 @@ function renderPaste(){
 function cardHTML(t){
   const p=PRIOS[t.prioridad]||PRIOS.sin;
   const dl=dlInfo(t.deadline);
-  const prog=t.cantidad>0?Math.min(100,(t.editados/t.cantidad)*100):0;
+  const subs=t.subcuentas||[];
+  const tieneSubs=subs.length>0;
+  const subEd=subs.reduce((s,x)=>s+(num(x.editados)||0),0);
+  const subCant=subs.reduce((s,x)=>s+(num(x.cantidad)||0),0);
+  const ed = tieneSubs?subEd:t.editados;
+  const cant = tieneSubs?(subCant||t.cantidad):t.cantidad;
+  const prog=cant>0?Math.min(100,(ed/cant)*100):0;
   const next=nextEstado(t.estado);
   return `<div class="card${t.id===selId?' sel':''}${t.feedback?' fb-'+t.feedback:''}" draggable="true" data-id="${t.id}">
     <div class="prio-stripe prio-${p.cls}"></div>
@@ -477,13 +495,29 @@ function cardHTML(t){
         <span class="prio-tag ${p.cls}" title="Cambiar prioridad" onclick="ciclarPrio('${t.id}')">${t.prioridad==='hoy'?'🔴':t.prioridad==='semana'?'🟠':t.prioridad==='despues'?'🔵':'⚪'} ${p.nm}</span>
       </div>
       <div class="meta">
-        <span class="qty">${t.cantidad} ${t.cantidad==1?'video':'videos'}</span>
+        <span class="qty">${cant} ${cant==1?'video':'videos'}</span>
         ${(t.tiposTxt && t.tiposTxt.indexOf('·')>=0)?`<span class="tipo-tag tipo-Mixto" title="${esc(t.tiposTxt)}">${esc(t.tiposTxt)}</span>`:`<span class="tipo-tag tipo-${esc(t.tipo||'Reel')}">${esc(t.tipo||'Reel')}</span>`}
         ${t.estilo?`<span class="estilo-tag">🎚️ ${esc(t.estilo)}</span>`:''}
         ${t.editor?`<span class="editor-tag">✂️ ${esc(t.editor)}</span>`:''}
         ${dl?`<span class="dl-badge ${dl.cls}">📅 ${dl.txt}</span>`:''}
       </div>
-      <div class="prog"><div class="prog-track"><div class="prog-fill" style="width:${prog}%"></div></div><span class="prog-txt">${t.editados}/${t.cantidad}</span></div>
+      <div class="prog"><div class="prog-track"><div class="prog-fill" style="width:${prog}%"></div></div><span class="prog-txt">${ed}/${cant}</span></div>
+      ${tieneSubs?`<div class="subs-box">${subs.map((s,i)=>{const se=num(s.editados)||0,sc=num(s.cantidad)||0,sp=sc>0?Math.min(100,se/sc*100):0;return `<div class="sub-row">
+        <div class="sub-info"><div class="sub-nm">${esc(s.nombre||'Cuenta '+(i+1))} <span class="sub-ct">${se}/${sc}</span></div><div class="sub-track"><div class="sub-fill" style="width:${sp}%"></div></div></div>
+        <button class="sub-pm" title="Menos" onclick="subEdit('${t.id}',${i},-1)">−</button>
+        <button class="sub-pm" title="Más" onclick="subEdit('${t.id}',${i},1)">＋</button>
+        ${s.url?`<a class="sub-link" href="${esc(s.url)}" target="_blank" title="Recursos">📁</a>`:''}
+      </div>`;}).join('')}<button class="sub-add" onclick="abrirSubcuentas('${t.id}')">⚙️ Editar sub-cuentas</button></div>`
+        :`<button class="fb-notas-btn" style="border-style:dashed" onclick="abrirSubcuentas('${t.id}')">📑 Dividir en sub-cuentas (Flip, Finanzas, René...)</button>`}
+      <div class="fb-row">
+        <button class="fb-btn ${t.feedback==='corregir'?'on cor':''}" title="Necesita corrección" onclick="setFeedback('${t.id}','corregir')">✏️ Corregir</button>
+        <button class="fb-btn ${t.feedback==='corregido'?'on cdo':''}" title="Ya corregido" onclick="setFeedback('${t.id}','corregido')">🔧 Corregido</button>
+        <button class="fb-btn ${t.feedback==='aprobado'?'on apr':''}" title="Aprobado" onclick="setFeedback('${t.id}','aprobado')">✅ Aprobado</button>
+      </div>
+      ${(function(){const n=(t.correcciones||[]).length,pend=(t.correcciones||[]).filter(x=>!x.hecho).length;
+        return `<button class="fb-notas-btn${n?' has':''}" onclick="abrirCorrecciones('${t.id}')">🗒️ ${n?('Correcciones · '+pend+' pendiente'+(pend===1?'':'s')+' de '+n):'Agregar corrección / feedback (Loom, notas)'}</button>`;})()}
+      ${recursosDe(t.cliente).length?`<div class="card-res">${recursosDe(t.cliente).map(r=>`<a href="${esc(r.url)}" target="_blank" class="res-chip" title="${esc(r.url)}">📁 <span class="rl">${esc(r.label||platform(r.url))}</span></a>`).join('')}</div>`:''}
+      ${t.notas?`<div class="card-notas">📝 ${esc(t.notas)}</div>`:''}
       <div class="fb-row">
         <button class="fb-btn ${t.feedback==='corregir'?'on cor':''}" title="Necesita corrección" onclick="setFeedback('${t.id}','corregir')">✏️ Corregir</button>
         <button class="fb-btn ${t.feedback==='corregido'?'on cdo':''}" title="Ya corregido" onclick="setFeedback('${t.id}','corregido')">🔧 Corregido</button>
@@ -511,6 +545,35 @@ function labelEstado(k){const e=ESTADOS.find(x=>x.k===k);return e?e.nm:k;}
 
 /* ============ ACCIONES ============ */
 window.ciclarPrio=(id)=>{const t=state.tarjetas.find(x=>x.id===id);const orden=['hoy','semana','despues','sin'];t.prioridad=orden[(orden.indexOf(t.prioridad)+1)%orden.length];t.updatedAt=Date.now();save();render();};
+/* ===== SUB-CUENTAS (un cliente que agrupa varias cuentas) ===== */
+function syncEditadosDesdeSubs(t){ if(t.subcuentas&&t.subcuentas.length){ t.editados=t.subcuentas.reduce((s,x)=>s+(num(x.editados)||0),0); t.cantidad=t.subcuentas.reduce((s,x)=>s+(num(x.cantidad)||0),0)||t.cantidad; } }
+window.subEdit=(id,i,d)=>{const t=state.tarjetas.find(x=>x.id===id);if(!t.subcuentas||!t.subcuentas[i])return;const s=t.subcuentas[i];const cap=num(s.cantidad)||0;s.editados=Math.max(0,Math.min(cap,(num(s.editados)||0)+d));syncEditadosDesdeSubs(t);t.updatedAt=Date.now();save();render();};
+window.abrirSubcuentas=(id)=>{renderSubcuentas(id);overlay.classList.add('show');};
+function renderSubcuentas(id){
+  const t=state.tarjetas.find(x=>x.id===id); if(!t.subcuentas)t.subcuentas=[];
+  const subs=t.subcuentas;
+  modal.innerHTML=`
+    <div class="modal-head"><h3>📑 Sub-cuentas · ${esc(t.cliente)}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px">Divide este cliente en cuentas (ej. Flip Latino, Finanzas, René...). Cada una con su cantidad de reels y su carpeta. El avance total se suma solo.</p>
+      <div>${subs.length?subs.map((s,i)=>`<div class="res-row"><div class="rinfo"><div class="rname">${esc(s.nombre||'Cuenta '+(i+1))} · ${num(s.editados)||0}/${num(s.cantidad)||0}</div>${s.url?`<div class="rurl"><a href="${esc(s.url)}" target="_blank">📁 ${esc(s.url)}</a></div>`:'<div class="rurl" style="color:var(--muted2)">sin carpeta</div>'}</div><button class="icon-btn" onclick="delSubcuenta('${id}',${i})" style="color:var(--red)">🗑</button></div>`).join(''):'<div class="hint" style="padding:10px 0">Sin sub-cuentas aún.</div>'}</div>
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+        <div class="form-grid" style="grid-template-columns:1.3fr .6fr;gap:10px">
+          <div class="fld"><label>Nombre de la cuenta</label><input id="sc_nom" placeholder="Ej. Flip Latino"></div>
+          <div class="fld"><label>Cant. reels</label><input id="sc_cant" type="number" min="0" placeholder="30"></div>
+        </div>
+        <div class="fld" style="margin-top:9px"><label>Carpeta de recursos (link, opcional)</label><input id="sc_url" placeholder="https://drive.google.com/..." onkeydown="if(event.key==='Enter')document.getElementById('sc_add').click()"></div>
+        <button class="btn" id="sc_add" style="margin-top:11px;width:100%" onclick="addSubcuenta('${id}')">＋ Agregar cuenta</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`;
+}
+window.addSubcuenta=(id)=>{const t=state.tarjetas.find(x=>x.id===id);if(!t.subcuentas)t.subcuentas=[];
+  const nom=document.getElementById('sc_nom').value.trim(), cant=parseInt(document.getElementById('sc_cant').value)||0, url=document.getElementById('sc_url').value.trim();
+  if(!nom){toast('Ponle nombre a la cuenta');return;}
+  t.subcuentas.push({id:uid('s'),nombre:nom,cantidad:cant,editados:0,url:url});
+  syncEditadosDesdeSubs(t);t.updatedAt=Date.now();save();renderSubcuentas(id);render();document.getElementById('sc_nom').focus();toast('Sub-cuenta agregada');};
+window.delSubcuenta=(id,i)=>{const t=state.tarjetas.find(x=>x.id===id);t.subcuentas.splice(i,1);syncEditadosDesdeSubs(t);t.updatedAt=Date.now();save();renderSubcuentas(id);render();};
 window.setFeedback=(id,fb)=>{const t=state.tarjetas.find(x=>x.id===id);
   if(t.feedback===fb){t.feedback='';}else{t.feedback=fb;}
   t.updatedAt=Date.now();save();render();
